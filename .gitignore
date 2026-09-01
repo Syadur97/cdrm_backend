@@ -1,0 +1,93 @@
+```gitignore
+# ================================
+# Python
+# ================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+.venv/
+.venv-1/
+venv/
+env/
+ENV/
+.ENV/
+
+# Python packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+wheels/
+
+# ================================
+# FastAPI / Uvicorn
+# ================================
+*.log
+logs/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# ================================
+# Environment / Secrets
+# ================================
+.env
+.env.*
+!.env.example
+
+# ================================
+# IDE / Editors
+# ================================
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# ================================
+# Database
+# ================================
+*.db
+*.sqlite
+*.sqlite3
+
+# ================================
+# Temporary files
+# ================================
+*.tmp
+*.temp
+*.bak
+*.cache
+
+# ================================
+# Jupyter
+# ================================
+.ipynb_checkpoints/
+
+# ================================
+# OS
+# ================================
+Thumbs.db
+Desktop.ini
+
+# ================================
+# Test / Coverage
+# ================================
+.pytest_cache/
+.tox/
+.nox/
+
+# ================================
+# Local data / uploads
+# ================================
+uploads/
+media/
+static/uploads/
+data/tmp/
+```
