@@ -43,6 +43,59 @@ a clean load, not an incremental merge.
 
 ---
 
+## Using Neon instead of local Docker Postgres
+
+Works fine, PostGIS included — Neon supports it the same way local Postgres
+does, self-serve via `CREATE EXTENSION postgis` (which the ingestion script
+already runs). To switch:
+
+1. Create a Neon project, then open **Connect** on the dashboard.
+2. Copy the **direct** connection string — not the one with `-pooler` in the
+   hostname. Fill in `.env` from it (see the Neon block in `.env.example`),
+   and set `POSTGRES_SSLMODE=require` — Neon rejects any connection without
+   TLS.
+3. Run `python scripts/ingest_mauza_census.py` and `uvicorn app.main:app`
+   exactly as before. Nothing else changes — `docker compose up -d db`
+   becomes unnecessary since Neon *is* the Postgres server now.
+
+**Why the direct string, not the pooled one:** Neon's pooled endpoint routes
+through PgBouncer, which exists to solve "thousands of short-lived
+serverless connections exhausting Postgres." That's not your situation —
+`uvicorn` is a persistent process, and `app/database.py` already opens its
+own small connection pool (2-10 connections) once at startup and reuses it
+for every request. Layering PgBouncer under that solves a problem you don't
+have and adds one you don't want: transaction-mode pooling drops session
+state between requests, which breaks `SET`, `LISTEN/NOTIFY`, and — this is
+the specific asyncpg gotcha — can conflict with asyncpg's prepared
+statements. The direct connection has none of that, and your actual
+connection count (≤10, plus one from the ingestion script when it runs)
+sits nowhere near Neon's direct-connection ceiling (97 usable on the
+smallest 0.25 CU compute size). Keep the pooled string in your back pocket
+only if you later add something that opens a connection per request
+(serverless functions, edge middleware) — not needed for this app.
+
+**Two free-tier things worth knowing before you commit to it:**
+- **0.5 GB storage per project.** The current 99-row sample uses a few MB.
+  Fine at 60,000+ rows without geometry too — I load-tested that scale (see
+  above) on a plain Docker Postgres and the numeric data alone stays well
+  under the cap. Once real mauza boundary polygons are joined in across the
+  full national dataset, storage is worth watching; Neon's paid tier is
+  $0.35/GB-month with no minimum if you outgrow it.
+- **Scale-to-zero.** Free-tier compute suspends after 5 minutes idle, and
+  the first request after that eats a ~300-500ms cold start. Fine for
+  development; for an actual emergency-response deployment where a burst of
+  traffic during an incident can't afford that delay, disable scale-to-zero
+  (available on the paid tiers).
+
+I verified the PostGIS extension, prepared-statement, and connection-string
+details above against Neon's current docs, but couldn't do a live
+end-to-end connection test from this environment — outbound network here
+is restricted to a fixed allowlist that doesn't include neon.tech. Worth a
+quick smoke test (`python scripts/ingest_mauza_census.py`) against your
+actual Neon project before relying on it.
+
+---
+
 ## The query pattern this was built for
 
 > select something by geocode or name → summary → drill into detail
